@@ -153,7 +153,10 @@ const S = [];
 const W = (block, name, sec, detail = "") => S.push({ block, name, sec, detail, rest: false });
 const R = (block, sec, name = "Rust") => S.push({ block, name, sec, detail: "Ademen, drinken, gewicht klaarzetten", rest: true });
 
+// Volgorde zo gekozen dat je maar twee keer van materiaal wisselt:
+// shadowboxen (zonder handschoenen) > barbell > handschoenen aan voor alle zakwerk > handschoenen uit voor de finisher.
 W("Warming-up", "Shadowboxen", 180, "Rustig opbouwen, losse schouders, voeten in beweging");
+W("Warming-up", "Shadowboxen met voetenwerk", 60, "In en uit stappen, hoeken maken, jab-cross erbij");
 for (let r = 1; r <= 2; r++) {
   const b = `Warming-up · ronde ${r}/2`;
   W(b, "Squats lege barbell", 45, "10 herhalingen, diep en gecontroleerd");
@@ -161,7 +164,6 @@ for (let r = 1; r <= 2; r++) {
   W(b, "Heupbruggen", 40, "10 herhalingen, 1 tel vasthouden boven");
   W(b, "Armcirkels", 30, "10 per kant, voor- en achterwaarts");
 }
-W("Warming-up", "Zak: jab-cross", 120, "Licht, op techniek, voetenwerk erbij");
 
 for (let s = 1; s <= 4; s++) {
   W(`Kracht · squat set ${s}/4`, "Back of front squat", 45, "6 herhalingen, 1 à 2 in de tank");
@@ -190,15 +192,18 @@ const bag = [
 ];
 bag.forEach(([n, d], i) => {
   W(`Bokszak · ronde ${i + 1}/6`, n, 120, d);
-  if (i < 5) R(`Bokszak · ronde ${i + 1}/6`, 60);
+  R(`Bokszak · ronde ${i + 1}/6`, i < 5 ? 60 : 30);
 });
-R("Finisher", 60, "Dumbbells pakken");
+for (let r = 1; r <= 3; r++) {
+  W(`Bokszak · burnout ${r}/3`, "Rechte stoten op de zak", 30, "Snel en hard, adem uit bij elke stoot");
+  if (r < 3) R(`Bokszak · burnout ${r}/3`, 15);
+}
+R("Finisher", 60, "Handschoenen uit, dumbbells pakken");
 
 for (let r = 1; r <= 3; r++) {
   const b = `Finisher · ronde ${r}/3`;
   W(b, "Dumbbell thrusters", 40, "10 herhalingen, diep zitten, krachtig drukken");
   W(b, "Renegade rows", 40, "10 herhalingen, heupen stil");
-  W(b, "Rechte stoten op de zak", 30, "Snel en hard, adem uit bij elke stoot");
   W(b, "Plank", 30, "Strak lichaam, niet doorhangen");
   if (r < 3) R(b, 60);
 }
@@ -208,6 +213,18 @@ W("Cooling-down", "Rekken", 300, "Heupbuigers, hamstrings, kuiten, schouders. Ru
 S.forEach(s => {
   s.type = s.rest ? "rest" : (/^Bokszak/.test(s.block) || /zak|boks|box/i.test(s.name)) ? "box" : "work";
 });
+
+// Materiaalpauze: wisselt een oefening direct (zonder rust ertussen) tussen boksen en overige oefeningen,
+// dan komt er automatisch 10 seconden pauze tussen om te wisselen.
+for (let k = S.length - 1; k > 0; k--) {
+  const a = S[k - 1], b = S[k];
+  if (a.type !== "rest" && b.type !== "rest" && a.type !== b.type) {
+    S.splice(k, 0, {
+      block: b.block, name: "Materiaalpauze", sec: 10, rest: true, type: "rest",
+      detail: b.type === "box" ? "Handschoenen aan, naar de zak" : `Klaarmaken voor: ${b.name.toLowerCase()}`
+    });
+  }
+}
 const COLOR = { box: "var(--box)", work: "var(--work)", rest: "var(--rest)" };
 const TAG = { box: "Boksen", work: "Werk", rest: "Rust" };
 
