@@ -7,13 +7,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;600&family=JetBrains+Mono:wght@500&display=swap">
 <style>
-/* Layout: one full screen for viewing from a distance. Phase label, huge exercise name, huge clock, draining bar, next-up line, controls at the bottom. Deliberately dark-only so it reads in a gym. */
+/* Layout v2: one full screen for viewing from a distance. Left: phase label, huge exercise name, huge clock, draining bar. Right: quiet 'Hierna' column with the next three steps. Controls at the bottom. Dark-only so it reads in a gym. Red = boksen, orange = overige oefeningen, blue = rust. */
 :root {
   --bg: #12151b;
   --panel: #1b2029;
   --fg: #eef1f5;
   --muted: #8a93a3;
   --work: #ff9d2e;
+  --box: #ff4f4f;
   --rest: #46b6e8;
   --track: #262c37;
   --phase: var(--work);
@@ -27,12 +28,14 @@ body { background: var(--bg); color: var(--fg); font-family: var(--body); }
 .app {
   height: 100%; box-sizing: border-box;
   padding-inline: clamp(16px, 4vw, 56px); padding-block: clamp(14px, 3vh, 36px);
-  display: grid; grid-template-rows: auto 1fr auto auto; gap: clamp(10px, 2vh, 24px);
+  display: grid; grid-template-columns: minmax(0, 1fr) clamp(220px, 26vw, 380px);
+  grid-template-rows: auto 1fr auto auto; column-gap: clamp(20px, 3vw, 48px); row-gap: clamp(10px, 2vh, 24px);
+  grid-template-areas: "top top" "main side" "bar side" "ctrl ctrl";
 }
-.top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.top { grid-area: top; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 .block { font-family: var(--display); font-weight: 600; text-transform: uppercase; letter-spacing: .12em; font-size: clamp(15px, 2.2vw, 24px); color: var(--muted); }
 .count { font-family: var(--mono); font-size: clamp(13px, 1.6vw, 18px); color: var(--muted); font-variant-numeric: tabular-nums; }
-.main { display: flex; flex-direction: column; justify-content: center; gap: clamp(6px, 1.5vh, 18px); min-width: 0; }
+.main { grid-area: main; display: flex; flex-direction: column; justify-content: center; gap: clamp(6px, 1.5vh, 18px); min-width: 0; }
 .tag {
   align-self: flex-start; font-family: var(--display); font-weight: 800; text-transform: uppercase; letter-spacing: .14em;
   font-size: clamp(16px, 2.4vw, 28px); color: var(--bg); background: var(--phase); padding: .15em .6em; border-radius: 4px;
@@ -52,8 +55,30 @@ body { background: var(--bg); color: var(--fg); font-family: var(--body); }
 .fill { height: 100%; width: 100%; background: var(--phase); transform-origin: left; }
 .overall { height: 4px; background: var(--track); border-radius: 2px; overflow: hidden; margin-top: 8px; }
 .overall > div { height: 100%; width: 0; background: var(--muted); }
-.next { font-size: clamp(16px, 2.2vw, 26px); color: var(--muted); margin-top: 10px; }
-.next b { color: var(--fg); font-weight: 600; }
+.barwrap { grid-area: bar; min-width: 0; }
+.side { grid-area: side; align-self: center; display: flex; flex-direction: column; gap: clamp(8px, 1.4vh, 14px); min-width: 0; }
+.side h2 { margin: 0; font-family: var(--display); font-weight: 600; text-transform: uppercase; letter-spacing: .14em; font-size: clamp(14px, 1.6vw, 20px); color: var(--muted); }
+.up { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: clamp(8px, 1.4vh, 14px); }
+.up li {
+  --c: var(--work);
+  display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 4px 10px;
+  padding: .55em .8em .6em; border-radius: 6px;
+  background: color-mix(in srgb, var(--c) 9%, var(--panel));
+  border-left: 4px solid color-mix(in srgb, var(--c) 60%, var(--panel));
+}
+.up li.box { --c: var(--box); }
+.up li.rest { --c: var(--rest); }
+.up .n { font-family: var(--display); font-weight: 600; text-transform: uppercase; letter-spacing: .02em; font-size: clamp(17px, 2vw, 26px); line-height: 1.05; color: color-mix(in srgb, var(--fg) 78%, var(--bg)); min-width: 0; overflow-wrap: anywhere; }
+.up .d { font-family: var(--mono); font-size: clamp(13px, 1.4vw, 17px); color: color-mix(in srgb, var(--c) 65%, var(--muted)); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.up li:nth-child(2) { opacity: .8; }
+.up li:nth-child(3) { opacity: .62; }
+.up .empty { color: var(--muted); font-size: clamp(15px, 1.6vw, 20px); background: none; border: 0; padding: 0; }
+@media (max-width: 820px) {
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr auto auto auto; grid-template-areas: "top" "main" "bar" "side" "ctrl"; }
+  .side { align-self: stretch; }
+  .up { flex-direction: row; overflow-x: auto; }
+  .up li { flex: 1 0 9.5em; }
+}
 .controls { display: flex; gap: 10px; flex-wrap: wrap; }
 button {
   font-family: var(--display); font-weight: 600; text-transform: uppercase; letter-spacing: .08em;
@@ -63,7 +88,7 @@ button {
 button:hover { border-color: var(--muted); }
 button:disabled { opacity: .35; cursor: default; }
 button:focus-visible { outline: 3px solid var(--phase); outline-offset: 2px; }
-.controls-wrap { display: flex; flex-direction: column; gap: 10px; }
+.controls-wrap { grid-area: ctrl; display: flex; flex-direction: column; gap: 10px; }
 .primary { display: grid; grid-template-columns: 1fr 1.4fr 1fr; gap: 10px; }
 .primary button {
   display: flex; align-items: center; justify-content: center; gap: .5em;
@@ -96,11 +121,15 @@ button:focus-visible { outline: 3px solid var(--phase); outline-offset: 2px; }
     <div class="clock" id="clock">3:00</div>
   </div>
 
-  <div>
+  <div class="barwrap">
     <div class="bar"><div class="fill" id="fill"></div></div>
     <div class="overall"><div id="overall"></div></div>
-    <div class="next" id="next"></div>
   </div>
+
+  <aside class="side" aria-label="Volgende oefeningen">
+    <h2>Hierna</h2>
+    <ol class="up" id="up"></ol>
+  </aside>
 
   <div class="controls-wrap">
     <div class="primary">
@@ -175,6 +204,13 @@ for (let r = 1; r <= 3; r++) {
 }
 W("Cooling-down", "Rekken", 300, "Heupbuigers, hamstrings, kuiten, schouders. Rustig ademen.");
 
+// Soort per stap: boksen (rood), overige oefening (oranje), rust (blauw)
+S.forEach(s => {
+  s.type = s.rest ? "rest" : (/^Bokszak/.test(s.block) || /zak|boks|box/i.test(s.name)) ? "box" : "work";
+});
+const COLOR = { box: "var(--box)", work: "var(--work)", rest: "var(--rest)" };
+const TAG = { box: "Boksen", work: "Werk", rest: "Rust" };
+
 // ---- Status ----
 const $ = id => document.getElementById(id);
 let i = 0, remaining = S[0].sec * 1000, total = S[0].sec * 1000;
@@ -189,15 +225,21 @@ function load(k) {
 }
 function render() {
   const s = S[i];
-  document.documentElement.style.setProperty("--phase", s.rest ? "var(--rest)" : "var(--work)");
+  document.documentElement.style.setProperty("--phase", COLOR[s.type]);
   $("block").textContent = s.block;
-  $("tag").textContent = done ? "Klaar" : s.rest ? "Rust" : "Werk";
+  $("tag").textContent = done ? "Klaar" : TAG[s.type];
   $("name").textContent = done ? "Training klaar" : s.name;
   $("detail").textContent = done ? "Goed gedaan. Drinken en rustig afkoelen." : s.detail;
   $("clock").textContent = fmt(remaining);
   $("fill").style.transform = `scaleX(${total ? remaining / total : 0})`;
-  const n = S[i + 1];
-  $("next").innerHTML = done ? "" : n ? `Hierna: <b>${n.name}</b> · ${fmt(n.sec * 1000)}` : "Hierna: <b>klaar</b>";
+  const upcoming = done ? [] : S.slice(i + 1, i + 4);
+  const sig = done ? "done" : String(i);
+  if ($("up").dataset.sig !== sig) {
+    $("up").dataset.sig = sig;
+    $("up").innerHTML = upcoming.length
+      ? upcoming.map(n => `<li class="${n.type}"><span class="n">${n.name}</span><span class="d">(${fmt(n.sec * 1000)})</span></li>`).join("")
+      : `<li class="empty">${done ? "Training voltooid" : "Dit is de laatste oefening"}</li>`;
+  }
   const elapsed = S.slice(0, i).reduce((a, x) => a + x.sec, 0) + (s.sec - remaining / 1000);
   $("overall").style.width = `${(done ? 1 : elapsed / totalSec) * 100}%`;
   $("count").textContent = `${i + 1} / ${S.length} · nog ${fmt((totalSec - elapsed) * 1000)}`;
