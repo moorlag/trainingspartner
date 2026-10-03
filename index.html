@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Zak &amp; Barbell Timer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: one full screen for viewing from a distance. Phase label, huge exercise name, huge clock, draining bar, next-up line, controls at the bottom. Deliberately dark-only so it reads in a gym. */
+:root {
+  --bg: #12151b;
+  --panel: #1b2029;
+  --fg: #eef1f5;
+  --muted: #8a93a3;
+  --work: #ff9d2e;
+  --rest: #46b6e8;
+  --track: #262c37;
+  --phase: var(--work);
+  --display: "Barlow Condensed", "Arial Narrow", Impact, sans-serif;
+  --body: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); }
+.app {
+  height: 100%; box-sizing: border-box;
+  padding-inline: clamp(16px, 4vw, 56px); padding-block: clamp(14px, 3vh, 36px);
+  display: grid; grid-template-rows: auto 1fr auto auto; gap: clamp(10px, 2vh, 24px);
+}
+.top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.block { font-family: var(--display); font-weight: 600; text-transform: uppercase; letter-spacing: .12em; font-size: clamp(15px, 2.2vw, 24px); color: var(--muted); }
+.count { font-family: var(--mono); font-size: clamp(13px, 1.6vw, 18px); color: var(--muted); font-variant-numeric: tabular-nums; }
+.main { display: flex; flex-direction: column; justify-content: center; gap: clamp(6px, 1.5vh, 18px); min-width: 0; }
+.tag {
+  align-self: flex-start; font-family: var(--display); font-weight: 800; text-transform: uppercase; letter-spacing: .14em;
+  font-size: clamp(16px, 2.4vw, 28px); color: var(--bg); background: var(--phase); padding: .15em .6em; border-radius: 4px;
+}
+.name {
+  font-family: var(--display); font-weight: 800; text-transform: uppercase; line-height: .92;
+  font-size: clamp(44px, 10vw, 150px); margin: 0; text-wrap: balance; overflow-wrap: anywhere;
+}
+.detail { font-size: clamp(17px, 2.6vw, 32px); color: var(--muted); max-width: 40ch; line-height: 1.3; margin: 0; }
+.clock {
+  font-family: var(--display); font-weight: 800; font-variant-numeric: tabular-nums; line-height: .85;
+  font-size: clamp(90px, 24vw, 340px); color: var(--phase); transition: color .3s;
+}
+.app.ending .clock { animation: pulse 1s steps(2) infinite; }
+@keyframes pulse { 50% { opacity: .45; } }
+.bar { height: clamp(22px, 4.5vh, 48px); background: var(--track); border-radius: 6px; overflow: hidden; }
+.fill { height: 100%; width: 100%; background: var(--phase); transform-origin: left; }
+.overall { height: 4px; background: var(--track); border-radius: 2px; overflow: hidden; margin-top: 8px; }
+.overall > div { height: 100%; width: 0; background: var(--muted); }
+.next { font-size: clamp(16px, 2.2vw, 26px); color: var(--muted); margin-top: 10px; }
+.next b { color: var(--fg); font-weight: 600; }
+.controls { display: flex; gap: 10px; flex-wrap: wrap; }
+button {
+  font-family: var(--display); font-weight: 600; text-transform: uppercase; letter-spacing: .08em;
+  font-size: clamp(17px, 2vw, 22px); color: var(--fg); background: var(--panel);
+  border: 1px solid var(--track); border-radius: 6px; padding: .55em 1.1em; cursor: pointer;
+}
+button:hover { border-color: var(--muted); }
+button:disabled { opacity: .35; cursor: default; }
+button:focus-visible { outline: 3px solid var(--phase); outline-offset: 2px; }
+.controls-wrap { display: flex; flex-direction: column; gap: 10px; }
+.primary { display: grid; grid-template-columns: 1fr 1.4fr 1fr; gap: 10px; }
+.primary button {
+  display: flex; align-items: center; justify-content: center; gap: .5em;
+  font-size: clamp(18px, 2.8vw, 34px); padding: .6em .5em; min-height: clamp(64px, 10vh, 110px); font-weight: 800;
+}
+.primary .ico { font-size: .8em; letter-spacing: -.15em; }
+#play { background: var(--phase); color: var(--bg); border-color: transparent; }
+.app.paused .clock { opacity: .4; }
+.app.paused .tag { background: var(--muted); }
+@media (max-width: 640px) { .primary .lbl { display: none; } #play .lbl { display: inline; } .primary .ico { font-size: 1.1em; } }
+.spacer { flex: 1; }
+.hint { font-size: 13px; color: var(--muted); align-self: center; }
+@media (max-width: 520px) { .hint { display: none; } .spacer { display: none; } }
+@media (prefers-reduced-motion: reduce) { .app.ending .clock { animation: none; } }
+</style>
+</head>
+<body>
+
+
+<div class="app" id="app">
+  <div class="top">
+    <div class="block" id="block">Warming-up</div>
+    <div class="count" id="count">1 / 1 · totaal 0:00</div>
+  </div>
+
+  <div class="main">
+    <div class="tag" id="tag">Werk</div>
+    <h1 class="name" id="name">Shadowboxen</h1>
+    <p class="detail" id="detail"></p>
+    <div class="clock" id="clock">3:00</div>
+  </div>
+
+  <div>
+    <div class="bar"><div class="fill" id="fill"></div></div>
+    <div class="overall"><div id="overall"></div></div>
+    <div class="next" id="next"></div>
+  </div>
+
+  <div class="controls-wrap">
+    <div class="primary">
+      <button id="prev" type="button" aria-label="Vorige oefening"><span class="ico">&#9664;&#9664;</span><span class="lbl">Vorige oefening</span></button>
+      <button id="play" type="button"><span class="ico" id="playIco">&#9654;</span><span class="lbl" id="playLbl">Start</span></button>
+      <button id="skip" type="button" aria-label="Volgende oefening"><span class="lbl">Volgende oefening</span><span class="ico">&#9654;&#9654;</span></button>
+    </div>
+    <div class="controls">
+      <button id="add" type="button">+15 sec</button>
+      <span class="spacer"></span>
+      <span class="hint">Spatie = start/pauze · pijltjes = vorige/volgende</span>
+      <button id="sound" type="button">Geluid aan</button>
+      <button id="full" type="button">Volledig scherm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---- Workout opbouwen ----
+const S = [];
+const W = (block, name, sec, detail = "") => S.push({ block, name, sec, detail, rest: false });
+const R = (block, sec, name = "Rust") => S.push({ block, name, sec, detail: "Ademen, drinken, gewicht klaarzetten", rest: true });
+
+W("Warming-up", "Shadowboxen", 180, "Rustig opbouwen, losse schouders, voeten in beweging");
+for (let r = 1; r <= 2; r++) {
+  const b = `Warming-up · ronde ${r}/2`;
+  W(b, "Squats lege barbell", 45, "10 herhalingen, diep en gecontroleerd");
+  W(b, "Roeien lege barbell", 45, "10 herhalingen, schouderbladen samen");
+  W(b, "Heupbruggen", 40, "10 herhalingen, 1 tel vasthouden boven");
+  W(b, "Armcirkels", 30, "10 per kant, voor- en achterwaarts");
+}
+W("Warming-up", "Zak: jab-cross", 120, "Licht, op techniek, voetenwerk erbij");
+
+for (let s = 1; s <= 4; s++) {
+  W(`Kracht · squat set ${s}/4`, "Back of front squat", 45, "6 herhalingen, 1 à 2 in de tank");
+  if (s < 4) R(`Kracht · squat set ${s}/4`, 120);
+}
+R("Kracht", 60, "Wisselen");
+for (let r = 1; r <= 3; r++) {
+  const b = `Kracht · superset ${r}/3`;
+  W(b, "Romanian deadlift", 40, "8 herhalingen, rug neutraal, heupen naar achter");
+  W(b, "Overhead press", 40, "8 herhalingen, billen en buik aan");
+  R(b, 90);
+}
+for (let s = 1; s <= 3; s++) {
+  W(`Kracht · roeien set ${s}/3`, "Barbell roeien", 45, "10 herhalingen, stang naar de navel");
+  if (s < 3) R(`Kracht · roeien set ${s}/3`, 75);
+}
+R("Bokszak", 90, "Handschoenen aan");
+
+const bag = [
+  ["Jab-cross-hoek", "Vlotte voetjes, terug in dekking na elke combinatie"],
+  ["Lowkicks + jab-cross", "Links en rechts afwisselen, heup erin draaien"],
+  ["Knieën in de clinch", "Zak vastpakken, knie hoog, rechtop blijven"],
+  ["Combinaties + trap", "Vrije combinaties, altijd eindigen met een trap"],
+  ["Interval 20/10", "20 sec alles eruit, 10 sec licht tikken"],
+  ["Vrije ronde", "Technisch en ontspannen, ademhaling laag"]
+];
+bag.forEach(([n, d], i) => {
+  W(`Bokszak · ronde ${i + 1}/6`, n, 120, d);
+  if (i < 5) R(`Bokszak · ronde ${i + 1}/6`, 60);
+});
+R("Finisher", 60, "Dumbbells pakken");
+
+for (let r = 1; r <= 3; r++) {
+  const b = `Finisher · ronde ${r}/3`;
+  W(b, "Dumbbell thrusters", 40, "10 herhalingen, diep zitten, krachtig drukken");
+  W(b, "Renegade rows", 40, "10 herhalingen, heupen stil");
+  W(b, "Rechte stoten op de zak", 30, "Snel en hard, adem uit bij elke stoot");
+  W(b, "Plank", 30, "Strak lichaam, niet doorhangen");
+  if (r < 3) R(b, 60);
+}
+W("Cooling-down", "Rekken", 300, "Heupbuigers, hamstrings, kuiten, schouders. Rustig ademen.");
+
+// ---- Status ----
+const $ = id => document.getElementById(id);
+let i = 0, remaining = S[0].sec * 1000, total = S[0].sec * 1000;
+let running = false, last = 0, done = false, soundOn = true, ctx = null, lastBeep = -1, wake = null;
+const totalSec = S.reduce((a, s) => a + s.sec, 0);
+const fmt = ms => { const t = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`; };
+
+function load(k) {
+  i = Math.max(0, Math.min(S.length - 1, k));
+  total = remaining = S[i].sec * 1000; lastBeep = -1; done = false;
+  render();
+}
+function render() {
+  const s = S[i];
+  document.documentElement.style.setProperty("--phase", s.rest ? "var(--rest)" : "var(--work)");
+  $("block").textContent = s.block;
+  $("tag").textContent = done ? "Klaar" : s.rest ? "Rust" : "Werk";
+  $("name").textContent = done ? "Training klaar" : s.name;
+  $("detail").textContent = done ? "Goed gedaan. Drinken en rustig afkoelen." : s.detail;
+  $("clock").textContent = fmt(remaining);
+  $("fill").style.transform = `scaleX(${total ? remaining / total : 0})`;
+  const n = S[i + 1];
+  $("next").innerHTML = done ? "" : n ? `Hierna: <b>${n.name}</b> · ${fmt(n.sec * 1000)}` : "Hierna: <b>klaar</b>";
+  const elapsed = S.slice(0, i).reduce((a, x) => a + x.sec, 0) + (s.sec - remaining / 1000);
+  $("overall").style.width = `${(done ? 1 : elapsed / totalSec) * 100}%`;
+  $("count").textContent = `${i + 1} / ${S.length} · nog ${fmt((totalSec - elapsed) * 1000)}`;
+  const started = !(i === 0 && remaining === total);
+  const paused = !running && !done && started;
+  $("playLbl").textContent = done ? "Opnieuw" : running ? "Pauze" : paused ? "Verder" : "Start";
+  $("playIco").innerHTML = running ? "&#10074;&#10074;" : done ? "&#8635;" : "&#9654;";
+  if (paused) $("tag").textContent = "Gepauzeerd";
+  $("app").classList.toggle("paused", paused);
+  $("prev").disabled = i === 0;
+  $("skip").disabled = done;
+  $("app").classList.toggle("ending", running && remaining <= 3000 && remaining > 0);
+}
+
+// ---- Geluid ----
+function beep(freq, dur = 0.15) {
+  if (!soundOn) return;
+  try {
+    ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.value = freq; o.type = "square";
+    g.gain.setValueAtTime(0.18, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    o.connect(g).connect(ctx.destination); o.start(); o.stop(ctx.currentTime + dur);
+  } catch (e) {}
+}
+
+// ---- Loop ----
+function tick(t) {
+  if (!running) return;
+  remaining -= t - last; last = t;
+  const sec = Math.ceil(remaining / 1000);
+  if (sec <= 3 && sec >= 1 && sec !== lastBeep) { lastBeep = sec; beep(660); }
+  if (remaining <= 0) {
+    if (i < S.length - 1) { load(i + 1); beep(S[i].rest ? 520 : 990, 0.4); }
+    else { remaining = 0; done = true; running = false; beep(990, 0.6); releaseWake(); render(); return; }
+  }
+  render();
+  requestAnimationFrame(tick);
+}
+async function requestWake() { try { wake = await navigator.wakeLock?.request("screen"); } catch (e) {} }
+function releaseWake() { try { wake?.release(); } catch (e) {} wake = null; }
+function toggle() {
+  if (done) { load(0); }
+  running = !running;
+  if (running) {
+    try { ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); ctx.resume(); } catch (e) {}
+    requestWake(); last = performance.now(); requestAnimationFrame(tick);
+  } else releaseWake();
+  render();
+}
+$("play").onclick = toggle;
+$("skip").onclick = () => {
+  if (i < S.length - 1) { load(i + 1); last = performance.now(); }
+  else { remaining = 0; done = true; running = false; releaseWake(); render(); }
+};
+$("prev").onclick = () => { if (i > 0) { load(i - 1); last = performance.now(); } };
+$("add").onclick = () => { remaining += 15000; total = Math.max(total, remaining); render(); };
+$("sound").onclick = () => { soundOn = !soundOn; $("sound").textContent = soundOn ? "Geluid aan" : "Geluid uit"; };
+$("full").onclick = async () => {
+  try { document.fullscreenElement ? await document.exitFullscreen() : await document.documentElement.requestFullscreen(); } catch (e) {}
+};
+document.addEventListener("keydown", e => {
+  if (e.code === "Space") { e.preventDefault(); toggle(); }
+  else if (e.key === "ArrowRight") $("skip").click();
+  else if (e.key === "ArrowLeft") $("prev").click();
+});
+document.addEventListener("visibilitychange", () => { if (running && document.visibilityState === "visible") requestWake(); });
+render();
+</script>
+
+</body>
+</html>
