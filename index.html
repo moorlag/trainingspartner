@@ -129,6 +129,35 @@ button:focus-visible { outline: 3px solid var(--phase); outline-offset: 2px; }
 .hint { font-size: 13px; color: var(--muted); align-self: center; }
 @media (max-width: 520px) { .hint { display: none; } .spacer { display: none; } }
 @media (prefers-reduced-motion: reduce) { .app.ending .clock { animation: none; } }
+.topright { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.savechip { display: inline-flex; align-items: center; gap: .45em; font-size: clamp(13px, 1.4vw, 16px); padding: .3em .7em; color: var(--muted); }
+.savechip .dot { width: .6em; height: .6em; border-radius: 50%; background: var(--muted); }
+.savechip.on .dot { background: var(--z3); }
+.savechip.wait .dot { background: var(--work); }
+.savechip.err .dot { background: var(--box); }
+.dlg { width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 48px); box-sizing: border-box; background: var(--panel); color: var(--fg);
+  border: 1px solid var(--track); border-radius: 10px; padding: 20px; font-family: var(--body); }
+.dlg::backdrop { background: rgba(5, 7, 10, .7); }
+.dlg-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.dlg h2, .dlg h3 { font-family: var(--display); text-transform: uppercase; letter-spacing: .08em; margin: 0; }
+.dlg h2 { font-size: 28px; }
+.dlg h3 { font-size: 17px; color: var(--muted); margin-top: 18px; margin-bottom: 8px; }
+.dlg-status { color: var(--muted); font-size: 15px; line-height: 1.4; margin: 8px 0 0; }
+.dlg .stack { display: flex; flex-direction: column; gap: 10px; }
+.dlg label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--muted); }
+.dlg input { font: 16px var(--body); color: var(--fg); background: var(--bg); border: 1px solid var(--track); border-radius: 6px; padding: .55em .6em; }
+.dlg input:focus-visible { outline: 2px solid var(--work); outline-offset: 1px; }
+.dlg .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.dlg button { font-size: 16px; padding: .45em .9em; }
+.dlg .primarybtn { background: var(--work); color: var(--bg); border-color: transparent; font-weight: 800; }
+.hist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.hist li { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: .55em .7em; background: var(--bg); border-radius: 6px; font-size: 14px; }
+.hist .d { font-weight: 600; }
+.hist .m { font-family: var(--mono); color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; }
+.hist .s { grid-column: 1 / -1; color: var(--muted); font-size: 13px; }
+.cfg { margin-top: 18px; border-top: 1px solid var(--track); padding-top: 12px; }
+.cfg summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+.cfg form { margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -137,7 +166,7 @@ button:focus-visible { outline: 3px solid var(--phase); outline-offset: 2px; }
 <div class="app" id="app">
   <div class="top">
     <div class="block" id="block">Warming-up</div>
-    <div class="count" id="count">1 / 1 · totaal 0:00</div>
+    <div class="topright"><button class="savechip" id="savechip" type="button"><span class="dot"></span><span id="savetxt">Opslag uit</span></button><div class="count" id="count">1 / 1 · totaal 0:00</div></div>
   </div>
 
   <div class="main">
@@ -173,6 +202,7 @@ button:focus-visible { outline: 3px solid var(--phase); outline-offset: 2px; }
     </div>
     <div class="controls">
       <button id="add" type="button">+15 sec</button>
+      <button id="data" type="button">Trainingsdata</button>
       <label class="maxhr" for="maxhr">Max hartslag <input id="maxhr" type="number" min="120" max="230" value="178"></label>
       <span class="spacer"></span>
       <span class="hint">Spatie = start/pauze · pijltjes = vorige/volgende</span>
@@ -182,6 +212,39 @@ button:focus-visible { outline: 3px solid var(--phase); outline-offset: 2px; }
   </div>
 </div>
 
+<dialog class="dlg" id="dlg" aria-labelledby="dlgTitle">
+  <div class="dlg-head"><h2 id="dlgTitle">Trainingsdata</h2><button type="button" id="dlgClose" aria-label="Sluiten">Sluiten</button></div>
+  <p class="dlg-status" id="dlgStatus"></p>
+
+  <section id="secLogin">
+    <h3>Inloggen</h3>
+    <form id="loginForm" class="stack">
+      <label for="email">E-mail <input id="email" type="email" autocomplete="username" required></label>
+      <label for="password">Wachtwoord <input id="password" type="password" autocomplete="current-password" required></label>
+      <button type="submit" class="primarybtn">Inloggen</button>
+    </form>
+  </section>
+
+  <section id="secUser" hidden>
+    <h3>Ingelogd</h3>
+    <div class="row"><span id="userEmail"></span><button type="button" id="logout">Uitloggen</button></div>
+    <div class="row"><button type="button" id="saveNow">Huidige training nu opslaan</button><button type="button" id="refresh">Vernieuwen</button></div>
+    <h3>Laatste trainingen</h3>
+    <ol class="hist" id="hist"></ol>
+  </section>
+
+  <details class="cfg" id="cfgBox">
+    <summary>Supabase-koppeling</summary>
+    <form id="cfgForm" class="stack">
+      <label for="sbUrl">Project URL <input id="sbUrl" type="url" placeholder="https://xxxx.supabase.co"></label>
+      <label for="sbKey">Publishable key <input id="sbKey" type="text" placeholder="sb_publishable_..."></label>
+      <button type="submit">Koppeling opslaan</button>
+    </form>
+  </details>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
 <script>
 // ---- Workout opbouwen ----
 const S = [];
@@ -273,6 +336,7 @@ const fmt = ms => { const t = Math.max(0, Math.ceil(ms / 1000)); return `${Math.
 function load(k) {
   i = Math.max(0, Math.min(S.length - 1, k));
   total = remaining = S[i].sec * 1000; lastBeep = -1; done = false;
+  onStepChange();
   render();
 }
 function render() {
@@ -322,12 +386,12 @@ function beep(freq, dur = 0.15) {
 // ---- Loop ----
 function tick(t) {
   if (!running) return;
-  remaining -= t - last; last = t;
+  const dt = t - last; remaining -= dt; last = t; recordTime(dt);
   const sec = Math.ceil(remaining / 1000);
   if (sec <= 3 && sec >= 1 && sec !== lastBeep) { lastBeep = sec; beep(660); }
   if (remaining <= 0) {
     if (i < S.length - 1) { load(i + 1); beep(S[i].rest ? 520 : 990, 0.4); }
-    else { remaining = 0; done = true; running = false; beep(990, 0.6); releaseWake(); render(); return; }
+    else { remaining = 0; done = true; running = false; beep(990, 0.6); releaseWake(); finishSession(true); render(); return; }
   }
   render();
   requestAnimationFrame(tick);
@@ -338,6 +402,7 @@ function toggle() {
   if (done) { load(0); }
   running = !running;
   if (running) {
+    beginSessionIfNeeded();
     try { ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); ctx.resume(); } catch (e) {}
     requestWake(); last = performance.now(); requestAnimationFrame(tick);
   } else releaseWake();
@@ -346,7 +411,7 @@ function toggle() {
 $("play").onclick = toggle;
 $("skip").onclick = () => {
   if (i < S.length - 1) { load(i + 1); last = performance.now(); }
-  else { remaining = 0; done = true; running = false; releaseWake(); render(); }
+  else { remaining = 0; done = true; running = false; releaseWake(); finishSession(true); render(); }
 };
 $("prev").onclick = () => { if (i > 0) { load(i - 1); last = performance.now(); } };
 $("add").onclick = () => { remaining += 15000; total = Math.max(total, remaining); render(); };
@@ -355,6 +420,7 @@ $("full").onclick = async () => {
   try { document.fullscreenElement ? await document.exitFullscreen() : await document.documentElement.requestFullscreen(); } catch (e) {}
 };
 document.addEventListener("keydown", e => {
+  if (e.target.closest && e.target.closest("input, textarea, select, dialog")) return;
   if (e.code === "Space") { e.preventDefault(); toggle(); }
   else if (e.key === "ArrowRight") $("skip").click();
   else if (e.key === "ArrowLeft") $("prev").click();
@@ -384,7 +450,7 @@ function onHeartRate(ev) {
   if (!bpm) return;
   const now = Date.now(); lastHrAt = now;
   hrHistory.push({ t: now, bpm }); hrHistory = hrHistory.filter(p => now - p.t <= 5 * 60 * 1000);
-  if (running) { hrSum += bpm; hrCount++; hrMax = Math.max(hrMax, bpm); }
+  if (running) { hrSum += bpm; hrCount++; hrMax = Math.max(hrMax, bpm); recordHR(bpm); }
   const z = zoneOf(bpm);
   document.documentElement.style.setProperty("--zone", z.c);
   document.documentElement.style.setProperty("--beat", (60 / bpm).toFixed(2) + "s");
@@ -466,6 +532,150 @@ function drawSpark() {
 }
 window.addEventListener("resize", drawSpark);
 drawSpark();
+
+// ---- Training vastleggen ----
+// Elke training wordt eerst lokaal in een wachtrij gezet en daarna naar Supabase gestuurd.
+// Lukt uploaden niet (geen internet, niet ingelogd), dan blijft hij in de wachtrij tot het wel lukt.
+let session = null, stepRec = null;
+const QKEY = "tp_queue";
+const readQ = () => { try { return JSON.parse(localStorage.getItem(QKEY)) || []; } catch (e) { return []; } };
+const writeQ = q => { try { localStorage.setItem(QKEY, JSON.stringify(q)); } catch (e) {} };
+const avg = a => a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : null;
+
+function beginSessionIfNeeded() {
+  if (session) return;
+  session = { id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())), started_at: new Date().toISOString(), t0: Date.now(), steps: [], samples: [] };
+  hrSum = 0; hrCount = 0; hrMax = 0;
+  openStep();
+}
+function openStep() {
+  closeStep();
+  stepRec = { idx: i, block: S[i].block, name: S[i].name, type: S[i].type, planned_sec: S[i].sec, active_ms: 0, hr: [], started_at: new Date().toISOString() };
+}
+function closeStep() {
+  if (stepRec && session && stepRec.active_ms > 1000) session.steps.push(stepRec);
+  stepRec = null;
+}
+function onStepChange() { if (session) openStep(); }
+function recordTime(dt) { if (stepRec) stepRec.active_ms += dt; }
+function recordHR(bpm) {
+  if (!session) return;
+  session.samples.push([Math.round((Date.now() - session.t0) / 1000), bpm]);
+  if (stepRec) stepRec.hr.push(bpm);
+}
+function finishSession(completed) {
+  if (!session) return;
+  closeStep();
+  const all = session.samples.map(x => x[1]);
+  const rec = {
+    session: {
+      id: session.id, started_at: session.started_at, ended_at: new Date().toISOString(),
+      duration_sec: Math.round(session.steps.reduce((a, x) => a + x.active_ms, 0) / 1000),
+      completed, max_hr_setting: maxHR, avg_hr: avg(all), max_hr: all.length ? Math.max(...all) : null,
+      hr_samples: session.samples
+    },
+    steps: session.steps.map((x, k) => ({
+      session_id: session.id, seq: k, idx: x.idx, block: x.block, name: x.name, type: x.type,
+      planned_sec: x.planned_sec, actual_sec: Math.round(x.active_ms / 1000), started_at: x.started_at,
+      avg_hr: avg(x.hr), max_hr: x.hr.length ? Math.max(...x.hr) : null
+    }))
+  };
+  session = null;
+  if (!rec.steps.length) return;
+  writeQ([...readQ(), rec]);
+  flushQueue();
+}
+// Pagina sluiten tijdens een training: bewaar wat er is, zodat het later alsnog wordt geupload
+window.addEventListener("pagehide", () => { if (session) finishSession(false); });
+
+// ---- Supabase ----
+let sb = null, sbUser = null, flushing = false, lastErr = "";
+function cfg() {
+  let url = "", key = "";
+  try { url = localStorage.getItem("sb_url") || ""; key = localStorage.getItem("sb_key") || ""; } catch (e) {}
+  const c = window.TP_CONFIG || {};
+  return { url: url || c.supabaseUrl || "", key: key || c.supabaseKey || "" };
+}
+function initSupabase() {
+  const c = cfg(); sb = null; sbUser = null;
+  $("sbUrl").value = c.url; $("sbKey").value = c.key;
+  if (!c.url || !c.key || !window.supabase) { updateSaveUI(); return; }
+  try {
+    sb = window.supabase.createClient(c.url, c.key, { auth: { persistSession: true, autoRefreshToken: true } });
+    sb.auth.getSession().then(({ data }) => { sbUser = data.session?.user || null; updateSaveUI(); flushQueue(); });
+    sb.auth.onAuthStateChange((_e, sess) => { sbUser = sess?.user || null; updateSaveUI(); if (sbUser) flushQueue(); });
+  } catch (e) { lastErr = "Koppeling klopt niet: " + e.message; }
+  updateSaveUI();
+}
+async function flushQueue() {
+  if (flushing || !sb || !sbUser) { updateSaveUI(); return; }
+  flushing = true; lastErr = "";
+  let q = readQ();
+  while (q.length) {
+    const rec = q[0];
+    try {
+      const a = await sb.from("training_sessions").upsert(rec.session);
+      if (a.error) throw a.error;
+      const b = await sb.from("training_steps").upsert(rec.steps, { onConflict: "session_id,seq" });
+      if (b.error) throw b.error;
+      q = readQ().filter(r => r.session.id !== rec.session.id); writeQ(q);
+    } catch (e) { lastErr = "Uploaden lukte niet: " + (e.message || e); break; }
+  }
+  flushing = false; updateSaveUI();
+  if ($("dlg").open && sbUser) loadHistory();
+}
+setInterval(() => { if (readQ().length) flushQueue(); }, 60000);
+window.addEventListener("online", flushQueue);
+
+function updateSaveUI() {
+  const n = readQ().length, chip = $("savechip");
+  chip.classList.remove("on", "wait", "err");
+  let t, st;
+  if (!sb) { t = "Opslag uit"; st = "Nog geen Supabase-koppeling. Vul onderaan de project URL en publishable key in."; }
+  else if (!sbUser) { t = n ? `${n} wacht, log in` : "Niet ingelogd"; chip.classList.add("wait"); st = "Log in om je trainingen op te slaan."; }
+  else if (lastErr) { t = n ? `${n} wacht` : "Fout"; chip.classList.add("err"); st = lastErr; }
+  else if (n) { t = `${n} wacht`; chip.classList.add("wait"); st = `${n} training(en) wachten op upload.`; }
+  else { t = "Opslag aan"; chip.classList.add("on"); st = "Trainingen worden automatisch opgeslagen zodra je klaar bent."; }
+  $("savetxt").textContent = t; $("dlgStatus").textContent = st;
+  $("secLogin").hidden = !sb || !!sbUser; $("secUser").hidden = !sbUser;
+  $("userEmail").textContent = sbUser?.email || "";
+  $("cfgBox").open = !sb;
+}
+
+async function loadHistory() {
+  if (!sb || !sbUser) return;
+  const { data, error } = await sb.from("training_sessions").select("started_at,duration_sec,completed,avg_hr,max_hr").order("started_at", { ascending: false }).limit(10);
+  const el = $("hist");
+  if (error) { el.innerHTML = `<li><span class="s">Ophalen lukte niet: ${error.message}</span></li>`; return; }
+  if (!data.length) { el.innerHTML = `<li><span class="s">Nog geen trainingen opgeslagen. Na je eerste training verschijnt hij hier.</span></li>`; return; }
+  const df = new Intl.DateTimeFormat("nl-NL", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  el.innerHTML = data.map(r => `<li><span class="d">${df.format(new Date(r.started_at))}</span><span class="m">${fmt(r.duration_sec * 1000)}</span>
+    <span class="s">${r.completed ? "Volledig" : "Gedeeltelijk"}${r.avg_hr ? ` · hartslag gem ${r.avg_hr}, max ${r.max_hr}` : " · geen hartslag"}</span></li>`).join("");
+}
+
+$("data").onclick = $("savechip").onclick = () => { updateSaveUI(); $("dlg").showModal(); loadHistory(); };
+$("dlgClose").onclick = () => $("dlg").close();
+$("cfgForm").addEventListener("submit", e => {
+  e.preventDefault();
+  try { localStorage.setItem("sb_url", $("sbUrl").value.trim()); localStorage.setItem("sb_key", $("sbKey").value.trim()); } catch (err) {}
+  initSupabase();
+});
+$("loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  if (!sb) return;
+  $("dlgStatus").textContent = "Bezig met inloggen…";
+  const { error } = await sb.auth.signInWithPassword({ email: $("email").value.trim(), password: $("password").value });
+  if (error) $("dlgStatus").textContent = "Inloggen lukte niet: " + error.message;
+  else { $("password").value = ""; loadHistory(); }
+});
+$("logout").onclick = async () => { await sb?.auth.signOut(); updateSaveUI(); };
+$("saveNow").onclick = () => {
+  if (!session) { $("dlgStatus").textContent = "Er loopt geen training om op te slaan."; return; }
+  finishSession(false);
+  if (running) beginSessionIfNeeded();
+};
+$("refresh").onclick = () => { flushQueue(); loadHistory(); };
+initSupabase();
 
 render();
 </script>
