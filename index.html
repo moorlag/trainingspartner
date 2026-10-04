@@ -230,6 +230,7 @@ button:focus-visible { outline: 3px solid var(--phase); outline-offset: 2px; }
     <div class="row"><span id="userEmail"></span><button type="button" id="logout">Uitloggen</button></div>
     <div class="row"><button type="button" id="saveNow">Huidige training nu opslaan</button><button type="button" id="refresh">Vernieuwen</button></div>
     <h3>Laatste trainingen</h3>
+    <p class="dlg-status"><a href="analyse.html" style="color: var(--work)">Open de analyse per oefening</a></p>
     <ol class="hist" id="hist"></ol>
   </section>
 
@@ -550,7 +551,7 @@ function beginSessionIfNeeded() {
 }
 function openStep() {
   closeStep();
-  stepRec = { idx: i, block: S[i].block, name: S[i].name, type: S[i].type, planned_sec: S[i].sec, active_ms: 0, hr: [], started_at: new Date().toISOString() };
+  stepRec = { idx: i, block: S[i].block, name: S[i].name, type: S[i].type, planned_sec: S[i].sec, active_ms: 0, hr: [], hrT: [], started_at: new Date().toISOString(), offset_sec: Math.round((Date.now() - session.t0) / 1000) };
 }
 function closeStep() {
   if (stepRec && session && stepRec.active_ms > 1000) session.steps.push(stepRec);
@@ -561,7 +562,16 @@ function recordTime(dt) { if (stepRec) stepRec.active_ms += dt; }
 function recordHR(bpm) {
   if (!session) return;
   session.samples.push([Math.round((Date.now() - session.t0) / 1000), bpm]);
-  if (stepRec) stepRec.hr.push(bpm);
+  if (stepRec) { stepRec.hr.push(bpm); stepRec.hrT.push(Math.round(stepRec.active_ms / 1000)); }
+}
+// Hartslagreactie binnen één stap: begin, eind, laagste, piek, tijd tot piek, stijging en daling
+function stepResponse(hr, t) {
+  if (!hr.length) return { start_hr: null, end_hr: null, min_hr: null, peak_at_sec: null, hr_rise: null, hr_drop: null };
+  const last = t[t.length - 1];
+  const start = avg(hr.filter((_, k) => t[k] <= t[0] + 5));
+  const end = avg(hr.filter((_, k) => t[k] >= last - 5));
+  let pk = 0; hr.forEach((b, k) => { if (b > hr[pk]) pk = k; });
+  return { start_hr: start, end_hr: end, min_hr: Math.min(...hr), peak_at_sec: t[pk], hr_rise: hr[pk] - start, hr_drop: start - end };
 }
 function finishSession(completed) {
   if (!session) return;
@@ -574,11 +584,18 @@ function finishSession(completed) {
       completed, max_hr_setting: maxHR, avg_hr: avg(all), max_hr: all.length ? Math.max(...all) : null,
       hr_samples: session.samples
     },
-    steps: session.steps.map((x, k) => ({
-      session_id: session.id, seq: k, idx: x.idx, block: x.block, name: x.name, type: x.type,
-      planned_sec: x.planned_sec, actual_sec: Math.round(x.active_ms / 1000), started_at: x.started_at,
-      avg_hr: avg(x.hr), max_hr: x.hr.length ? Math.max(...x.hr) : null
-    }))
+    steps: session.steps.map((x, k) => {
+      // Vorige echte oefening (rust overslaan), om het effect van de volgorde te kunnen zien
+      let prev = null;
+      for (let j = k - 1; j >= 0; j--) if (session.steps[j].type !== "rest") { prev = session.steps[j]; break; }
+      const r = stepResponse(x.hr, x.hrT);
+      return {
+        session_id: session.id, seq: k, idx: x.idx, block: x.block, name: x.name, type: x.type,
+        planned_sec: x.planned_sec, actual_sec: Math.round(x.active_ms / 1000), started_at: x.started_at,
+        offset_sec: x.offset_sec, prev_name: prev ? prev.name : null, prev_type: prev ? prev.type : null,
+        avg_hr: avg(x.hr), max_hr: x.hr.length ? Math.max(...x.hr) : null, ...r
+      };
+    })
   };
   session = null;
   if (!rec.steps.length) return;

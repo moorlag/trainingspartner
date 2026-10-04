@@ -32,3 +32,11 @@ Eenmalige opzet:
 3. Ga naar **Authentication > Users > Add user** en maak een gebruiker met e-mail en wachtwoord. Zet daarna bij **Authentication > Sign In / Providers** "Allow new users to sign up" uit, zodat niemand anders een account kan maken.
 4. Kopieer bij **Project Settings > API** de Project URL en de publishable key naar `config.js` (of vul ze in de timer in via **Trainingsdata > Supabase-koppeling**).
 5. Open de timer, klik op **Trainingsdata** en log in.
+
+## Analyse
+
+`analyse.html` (te openen via **Trainingsdata > Open de analyse per oefening**) laat per training zien:
+
+- de hartslag over de hele training, met de oefeningen als gekleurde vlakken in de volgorde waarin je ze deed
+- per oefening: begin-, piek- en eindhartslag, stijging, tijd tot de piek en herstel in de rust erna
+- over alle trainingen: gemiddelde reactie per oefening, en hoe een oefening uitpakt afhankelijk van wat er vlak voor kwam

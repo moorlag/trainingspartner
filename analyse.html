@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trainingspartner Analyse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: one reading column. Header with training picker, the session as a heart-rate timeline with
+   coloured exercise bands in order, then the step table, then per-exercise patterns across trainings.
+   Same dark palette as the timer: red = boksen, orange = overige oefeningen, blue = rust. */
+:root {
+  --bg: #12151b;
+  --panel: #1b2029;
+  --fg: #eef1f5;
+  --muted: #8a93a3;
+  --faint: #59616f;
+  --track: #262c37;
+  --work: #ff9d2e;
+  --box: #ff4f4f;
+  --rest: #46b6e8;
+  --display: "Barlow Condensed", "Arial Narrow", Impact, sans-serif;
+  --body: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+html { margin: 0; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.45 var(--body); }
+.wrap { max-width: 1100px; margin: 0 auto; padding-inline: clamp(16px, 4vw, 40px); padding-block: 24px 64px; display: flex; flex-direction: column; gap: 28px; }
+header { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+h1 { font-family: var(--display); font-weight: 800; text-transform: uppercase; font-size: clamp(36px, 6vw, 60px); line-height: .9; margin: 0; letter-spacing: .01em; }
+h1 small { display: block; font-size: .36em; font-weight: 600; letter-spacing: .14em; color: var(--muted); margin-bottom: 6px; }
+h2 { font-family: var(--display); font-weight: 600; text-transform: uppercase; letter-spacing: .12em; font-size: 18px; color: var(--muted); margin: 0 0 10px; }
+a { color: var(--work); }
+.controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+select, button {
+  font: 600 16px var(--body); color: var(--fg); background: var(--panel); border: 1px solid var(--track);
+  border-radius: 6px; padding: .5em .7em; cursor: pointer;
+}
+select:focus-visible, button:focus-visible { outline: 2px solid var(--work); outline-offset: 2px; }
+.msg { color: var(--muted); background: var(--panel); border-radius: 8px; padding: 14px 16px; margin: 0; }
+.stats { display: flex; gap: 28px; flex-wrap: wrap; }
+.stat { display: flex; flex-direction: column; }
+.stat b { font-family: var(--display); font-weight: 800; font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.chartbox { position: relative; background: var(--panel); border-radius: 8px; padding: 10px; }
+#chart { display: block; width: 100%; height: 300px; }
+.tip {
+  position: absolute; pointer-events: none; background: var(--bg); border: 1px solid var(--track); border-radius: 6px;
+  padding: 6px 9px; font-size: 13px; line-height: 1.35; white-space: nowrap; transform: translate(-50%, -110%);
+}
+.tip b { font-family: var(--mono); font-weight: 500; }
+.scroll { overflow-x: auto; background: var(--panel); border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 8px 10px; text-align: left; white-space: nowrap; }
+th { font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .07em; border-bottom: 1px solid var(--track); position: sticky; top: 0; background: var(--panel); }
+td { border-bottom: 1px solid color-mix(in srgb, var(--track) 60%, transparent); }
+td.n, th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+td.n { font-size: 13px; }
+tr.rest td { color: var(--muted); }
+.chip { display: inline-flex; align-items: center; gap: 7px; }
+.chip::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: var(--c); flex: none; }
+.chip.box { --c: var(--box); } .chip.work { --c: var(--work); } .chip.rest { --c: var(--rest); }
+.up { color: var(--box); } .down { color: var(--rest); }
+.note { color: var(--muted); font-size: 14px; margin: 8px 0 0; max-width: 70ch; }
+.hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><small>Trainingspartner</small>Analyse</h1>
+    <div class="controls">
+      <label for="pick" class="hidden">Training</label>
+      <select id="pick" aria-label="Kies een training"></select>
+      <a href="./">Terug naar de timer</a>
+    </div>
+  </header>
+
+  <p class="msg" id="msg">Trainingen laden…</p>
+
+  <section id="secSession" class="hidden">
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <section id="secChart" class="hidden">
+    <h2>Hartslag per oefening, in volgorde</h2>
+    <div class="legend"><span><i style="background:var(--box)"></i>Boksen</span><span><i style="background:var(--work)"></i>Overige oefeningen</span><span><i style="background:var(--rest)"></i>Rust</span><span style="color:var(--fg)">— hartslag</span></div>
+    <div class="chartbox"><svg id="chart" role="img" aria-label="Hartslag over de training met de oefeningen als gekleurde vlakken"></svg><div class="tip hidden" id="tip"></div></div>
+  </section>
+
+  <section id="secSteps" class="hidden">
+    <h2>Volgorde en reactie</h2>
+    <div class="scroll"><table id="steps"></table></div>
+    <p class="note">Start en eind zijn het gemiddelde van de eerste en laatste 5 seconden. Stijging is piek min start. Bij rust is herstel hoeveel je hartslag daalde.</p>
+  </section>
+
+  <section id="secEx" class="hidden">
+    <h2>Per oefening, over alle trainingen</h2>
+    <div class="scroll"><table id="ex"></table></div>
+    <p class="note">Herstel is hoeveel je hartslag zakte in de rust direct na de oefening.</p>
+  </section>
+
+  <section id="secOrder" class="hidden">
+    <h2>Effect van de volgorde</h2>
+    <div class="scroll"><table id="order"></table></div>
+    <p class="note">Dezelfde oefening, gegroepeerd op wat er vlak voor kwam. Zo zie je of een oefening zwaarder wordt na bijvoorbeeld boksen.</p>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmt = sec => sec == null ? "–" : `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, "0")}`;
+const avg = a => { a = a.filter(v => v != null); return a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : null; };
+const num = v => v == null ? "–" : v;
+const signed = v => v == null ? "–" : v > 0 ? `<span class="up">+${v}</span>` : v < 0 ? `<span class="down">${v}</span>` : "0";
+const drop = v => v == null ? "–" : `<span class="down">${v > 0 ? "-" : v < 0 ? "+" : ""}${Math.abs(v)}</span>`;
+const TYPE = { box: "Boksen", work: "Oefening", rest: "Rust" };
+const df = new Intl.DateTimeFormat("nl-NL", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+function show(id, on) { $(id).classList.toggle("hidden", !on); }
+function msg(t) { $("msg").textContent = t || ""; show("msg", !!t); }
+
+let sb, sessions = [], allSteps = [];
+
+function cfg() {
+  let url = "", key = "";
+  try { url = localStorage.getItem("sb_url") || ""; key = localStorage.getItem("sb_key") || ""; } catch (e) {}
+  const c = window.TP_CONFIG || {};
+  return { url: url || c.supabaseUrl, key: key || c.supabaseKey };
+}
+
+async function init() {
+  const c = cfg();
+  if (!c.url || !c.key || !window.supabase) { msg("Geen Supabase-koppeling gevonden. Stel die in via de timer, bij Trainingsdata."); return; }
+  sb = window.supabase.createClient(c.url, c.key, { auth: { persistSession: true } });
+  const { data } = await sb.auth.getSession();
+  if (!data.session) { msg("Je bent niet ingelogd. Log in via de timer, bij Trainingsdata, en open deze pagina daarna opnieuw."); return; }
+
+  const [a, b] = await Promise.all([
+    sb.from("training_sessions").select("id,started_at,duration_sec,completed,avg_hr,max_hr,max_hr_setting,hr_samples").order("started_at", { ascending: false }).limit(50),
+    sb.from("training_steps").select("*").order("seq").limit(5000)
+  ]);
+  if (a.error || b.error) { msg("Ophalen lukte niet: " + (a.error || b.error).message); return; }
+  sessions = a.data; allSteps = b.data;
+  if (!sessions.length) { msg("Nog geen trainingen opgeslagen. Na je eerste training verschijnt hij hier."); return; }
+  msg("");
+  $("pick").innerHTML = sessions.map(s => `<option value="${s.id}">${esc(df.format(new Date(s.started_at)))} · ${fmt(s.duration_sec)}${s.completed ? "" : " (deels)"}</option>`).join("");
+  $("pick").onchange = () => renderSession($("pick").value);
+  renderSession(sessions[0].id);
+  renderPatterns();
+}
+
+function stepsOf(id) { return allSteps.filter(t => t.session_id === id).sort((x, y) => x.seq - y.seq); }
+
+function renderSession(id) {
+  const s = sessions.find(x => x.id === id), st = stepsOf(id);
+  const work = st.filter(t => t.type !== "rest");
+  $("stats").innerHTML = [
+    [fmt(s.duration_sec), "Actieve tijd"], [work.length, "Oefeningen"],
+    [num(s.avg_hr), "Gem. hartslag"], [num(s.max_hr), "Max hartslag"]
+  ].map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join("");
+  show("secSession", true);
+
+  const nextRest = k => (st[k + 1] && st[k + 1].type === "rest") ? st[k + 1] : null;
+  $("steps").innerHTML = `<thead><tr><th class="n">#</th><th>Oefening</th><th>Na</th><th class="n">Start</th><th class="n">Duur</th><th class="n">Begin</th><th class="n">Piek</th><th class="n">Eind</th><th class="n">Stijging</th><th class="n">Tot piek</th><th class="n">Herstel</th></tr></thead><tbody>` +
+    st.map((t, k) => {
+      const r = t.type === "rest" ? t : nextRest(k);
+      return `<tr class="${t.type}"><td class="n">${t.seq + 1}</td><td><span class="chip ${t.type}">${esc(t.name)}</span></td><td>${esc(t.type === "rest" ? "" : t.prev_name || "")}</td>
+        <td class="n">${fmt(t.offset_sec)}</td><td class="n">${fmt(t.actual_sec)}</td><td class="n">${num(t.start_hr)}</td><td class="n">${num(t.max_hr)}</td><td class="n">${num(t.end_hr)}</td>
+        <td class="n">${t.type === "rest" ? "" : signed(t.hr_rise)}</td><td class="n">${t.type === "rest" ? "" : fmt(t.peak_at_sec)}</td>
+        <td class="n">${r ? drop(r.hr_drop) : "–"}</td></tr>`;
+    }).join("") + "</tbody>";
+  show("secSteps", true);
+  drawChart(s, st);
+}
+
+// ---- Grafiek: hartslag als lijn, oefeningen als gekleurde banden in volgorde ----
+function drawChart(s, st) {
+  const svg = $("chart"), W = svg.clientWidth || 800, H = svg.clientHeight || 300;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const css = getComputedStyle(document.documentElement), col = n => css.getPropertyValue("--" + n).trim();
+  const samples = s.hr_samples || [];
+  const end = Math.max(1, ...st.map(t => (t.offset_sec || 0) + (t.actual_sec || 0)), ...samples.map(p => p[0]));
+  const L = 40, R = 10, T = 26, B = 24, pw = W - L - R, ph = H - T - B;
+  const bpms = samples.map(p => p[1]);
+  let lo = Math.min(...bpms, 60), hi = Math.max(...bpms, 120);
+  lo = Math.floor((lo - 5) / 10) * 10; hi = Math.ceil((hi + 5) / 10) * 10;
+  const x = sec => L + sec / end * pw, y = b => T + ph - (b - lo) / (hi - lo) * ph;
+  let g = "";
+  // raster
+  for (let v = lo; v <= hi; v += (hi - lo > 80 ? 20 : 10)) {
+    g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="${col("track")}" stroke-width="1"/>`;
+    g += `<text x="${L - 6}" y="${y(v) + 4}" fill="${col("faint")}" font-size="11" font-family="JetBrains Mono, monospace" text-anchor="end">${v}</text>`;
+  }
+  // banden per stap, met 2px tussenruimte
+  st.forEach(t => {
+    if (t.offset_sec == null) return;
+    const x0 = x(t.offset_sec), x1 = x(t.offset_sec + (t.actual_sec || 0)), w = Math.max(1, x1 - x0 - 2);
+    g += `<rect class="band" data-seq="${t.seq}" x="${x0 + 1}" y="${T}" width="${w}" height="${ph}" rx="3" fill="${col(t.type)}" fill-opacity="${t.type === "rest" ? .14 : .22}"/>`;
+    g += `<rect x="${x0 + 1}" y="${T - 8}" width="${w}" height="5" rx="2" fill="${col(t.type)}"/>`;
+    if (w > 70 && t.type !== "rest") g += `<text x="${x0 + 5}" y="${T + 14}" fill="${col("fg")}" fill-opacity=".85" font-size="11" font-family="Barlow, sans-serif">${esc(t.name.length > Math.floor(w / 6) ? t.name.slice(0, Math.floor(w / 6) - 1) + "…" : t.name)}</text>`;
+  });
+  // tijd-as
+  const step = end > 1800 ? 600 : end > 600 ? 300 : end > 120 ? 60 : 30;
+  for (let t = 0; t <= end; t += step) g += `<text x="${x(t)}" y="${H - 6}" fill="${col("faint")}" font-size="11" font-family="JetBrains Mono, monospace" text-anchor="middle">${fmt(t)}</text>`;
+  // hartslaglijn
+  if (samples.length > 1) {
+    const d = samples.map((p, k) => `${k ? "L" : "M"}${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`).join("");
+    g += `<path d="${d}" fill="none" stroke="${col("fg")}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const pk = samples.reduce((a, p) => p[1] > a[1] ? p : a);
+    g += `<circle cx="${x(pk[0])}" cy="${y(pk[1])}" r="4.5" fill="${col("fg")}" stroke="${col("panel")}" stroke-width="2"/>`;
+    g += `<text x="${Math.min(x(pk[0]) + 8, W - R - 40)}" y="${y(pk[1]) - 6}" fill="${col("fg")}" font-size="12" font-family="JetBrains Mono, monospace">${pk[1]}</text>`;
+  } else {
+    g += `<text x="${L + pw / 2}" y="${T + ph / 2}" fill="${col("muted")}" font-size="14" text-anchor="middle" font-family="Barlow, sans-serif">Geen hartslag gemeten tijdens deze training</text>`;
+  }
+  g += `<line id="cross" x1="0" x2="0" y1="${T}" y2="${T + ph}" stroke="${col("muted")}" stroke-width="1" visibility="hidden"/>`;
+  g += `<rect id="hit" x="${L}" y="${T - 8}" width="${pw}" height="${ph + 8}" fill="transparent"/>`;
+  svg.innerHTML = g;
+  show("secChart", true);
+
+  // hover: kruisdraad + tooltip met tijd, hartslag en oefening
+  const hit = svg.querySelector("#hit"), cross = svg.querySelector("#cross"), tip = $("tip");
+  const move = ev => {
+    const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) * (W / r.width);
+    const sec = Math.max(0, Math.min(end, (px - L) / pw * end));
+    const stp = st.find(t => t.offset_sec != null && sec >= t.offset_sec && sec < t.offset_sec + (t.actual_sec || 0));
+    let near = null; for (const p of samples) if (!near || Math.abs(p[0] - sec) < Math.abs(near[0] - sec)) near = p;
+    cross.setAttribute("x1", x(sec)); cross.setAttribute("x2", x(sec)); cross.setAttribute("visibility", "visible");
+    tip.innerHTML = `<b>${fmt(sec)}</b>${near ? ` · <b>${near[1]}</b> bpm` : ""}<br>${stp ? `<span class="chip ${stp.type}">${esc(stp.name)}</span>` : "–"}`;
+    tip.style.left = (x(sec) / W * r.width + 10) + "px"; tip.style.top = (T / H * r.height + 10) + "px";
+    tip.classList.remove("hidden");
+  };
+  hit.addEventListener("pointermove", move);
+  hit.addEventListener("pointerleave", () => { cross.setAttribute("visibility", "hidden"); tip.classList.add("hidden"); });
+}
+
+// ---- Patronen over alle trainingen ----
+function renderPatterns() {
+  const bySession = {};
+  allSteps.forEach(t => (bySession[t.session_id] = bySession[t.session_id] || []).push(t));
+  Object.values(bySession).forEach(a => a.sort((x, y) => x.seq - y.seq));
+
+  const ex = {};
+  Object.values(bySession).forEach(a => {
+    let pos = 0;
+    a.forEach((t, k) => {
+      if (t.type === "rest") return;
+      pos++;
+      const e = ex[t.name] = ex[t.name] || { name: t.name, type: t.type, n: 0, pos: [], peak: [], rise: [], tpk: [], rec: [], sessions: new Set() };
+      e.n++; e.pos.push(pos); e.peak.push(t.max_hr); e.rise.push(t.hr_rise); e.tpk.push(t.peak_at_sec); e.sessions.add(t.session_id);
+      const nx = a[k + 1];
+      if (nx && nx.type === "rest") e.rec.push(nx.hr_drop);
+    });
+  });
+  const rows = Object.values(ex).sort((p, q) => avg(p.pos) - avg(q.pos));
+  if (!rows.length) return;
+  $("ex").innerHTML = `<thead><tr><th>Oefening</th><th class="n">Keer</th><th class="n">Trainingen</th><th class="n">Gem. positie</th><th class="n">Gem. piek</th><th class="n">Gem. stijging</th><th class="n">Tot piek</th><th class="n">Herstel erna</th></tr></thead><tbody>` +
+    rows.map(e => `<tr><td><span class="chip ${e.type}">${esc(e.name)}</span></td><td class="n">${e.n}</td><td class="n">${e.sessions.size}</td><td class="n">${avg(e.pos)}</td>
+      <td class="n">${num(avg(e.peak))}</td><td class="n">${signed(avg(e.rise))}</td><td class="n">${fmt(avg(e.tpk))}</td><td class="n">${drop(avg(e.rec))}</td></tr>`).join("") + "</tbody>";
+  show("secEx", true);
+
+  const ord = {};
+  allSteps.forEach(t => {
+    if (t.type === "rest" || !t.prev_name) return;
+    const k = t.name + "\u0000" + t.prev_name;
+    const o = ord[k] = ord[k] || { name: t.name, type: t.type, prev: t.prev_name, ptype: t.prev_type, n: 0, start: [], peak: [], rise: [] };
+    o.n++; o.start.push(t.start_hr); o.peak.push(t.max_hr); o.rise.push(t.hr_rise);
+  });
+  const orows = Object.values(ord).sort((p, q) => p.name.localeCompare(q.name, "nl") || q.n - p.n);
+  if (!orows.length) return;
+  $("order").innerHTML = `<thead><tr><th>Oefening</th><th>Kwam na</th><th class="n">Keer</th><th class="n">Gem. begin</th><th class="n">Gem. piek</th><th class="n">Gem. stijging</th></tr></thead><tbody>` +
+    orows.map(o => `<tr><td><span class="chip ${o.type}">${esc(o.name)}</span></td><td><span class="chip ${o.ptype || "work"}">${esc(o.prev)}</span></td><td class="n">${o.n}</td>
+      <td class="n">${num(avg(o.start))}</td><td class="n">${num(avg(o.peak))}</td><td class="n">${signed(avg(o.rise))}</td></tr>`).join("") + "</tbody>";
+  show("secOrder", true);
+}
+
+window.addEventListener("resize", () => { const id = $("pick").value; if (id) drawChart(sessions.find(s => s.id === id), stepsOf(id)); });
+init();
+</script>
+</body>
+</html>
