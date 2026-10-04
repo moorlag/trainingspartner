@@ -1,12 +1,12 @@
 # Trainingspartner 2.0
 
-Fullscreen timer voor een training met bokszak, barbell en losse gewichten (ongeveer 60 minuten).
+Fullscreen timer voor een training met bokszak, barbell en losse gewichten (45 minuten).
 
 - Grote oefeningnaam, aftelklok en een balk die leegloopt
 - Rood voor boksen, oranje voor overige oefeningen, blauw voor rust
 - Rechts de drie eerstvolgende oefeningen met hun duur
 - Automatisch 10 sec materiaalpauze bij een directe wissel tussen boksen en overige oefeningen
-- Volgorde zo dat de handschoenen maar één keer aan en uit gaan
+- Opbouw van 45 minuten: opwarmen, gewichten, boksen, cooling-down (handschoenen gaan één keer aan en uit)
 - Knoppen voor vorige oefening, start/pauze en volgende oefening
 - Piepjes in de laatste 3 seconden en bij elke wissel
 - Live hartslag van een Fitbit Air (of andere Bluetooth-hartslagmeter) met zones en grafiek van de laatste 5 minuten
