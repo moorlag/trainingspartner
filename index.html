@@ -158,6 +158,47 @@ button:focus-visible { outline: 3px solid var(--phase); outline-offset: 2px; }
 .cfg { margin-top: 18px; border-top: 1px solid var(--track); padding-top: 12px; }
 .cfg summary { cursor: pointer; color: var(--muted); font-size: 14px; }
 .cfg form { margin-top: 10px; }
+/* ---- Overzicht na de training ---- */
+.summary { position: fixed; inset: 0; z-index: 20; background: var(--bg); overflow-y: auto;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.sum-wrap { max-width: 1100px; margin: 0 auto; padding-inline: clamp(16px, 4vw, 48px); padding-block: clamp(18px, 3vh, 36px) 48px;
+  display: flex; flex-direction: column; gap: clamp(16px, 2.6vh, 28px); }
+.sum-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.sum-head h2 { font-family: var(--display); font-weight: 800; text-transform: uppercase; font-size: clamp(40px, 7vw, 84px); line-height: .9; margin: 0; }
+.sum-head h2 small { display: block; font-size: .3em; font-weight: 600; letter-spacing: .14em; color: var(--muted); margin-bottom: 6px; }
+.sum-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.linkbtn { font-family: var(--display); font-weight: 600; text-transform: uppercase; letter-spacing: .08em; font-size: clamp(17px, 2vw, 22px); color: var(--fg); background: var(--panel); border: 1px solid var(--track); border-radius: 6px; padding: .55em 1.1em; text-decoration: none; }
+.sum-actions .go { background: var(--work); color: var(--bg); border-color: transparent; font-weight: 800; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.kpi { background: var(--panel); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.kpi b { font-family: var(--display); font-weight: 800; font-size: clamp(34px, 4.6vw, 56px); line-height: 1; font-variant-numeric: tabular-nums; }
+.kpi b small { font-size: .4em; font-weight: 600; color: var(--muted); margin-left: .15em; }
+.kpi span { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.kpi em { font-style: normal; font-size: 12px; color: var(--muted); }
+.kpi.hero b { color: var(--work); }
+.sum-sec h3 { font-family: var(--display); font-weight: 600; text-transform: uppercase; letter-spacing: .12em; font-size: 18px; color: var(--muted); margin: 0 0 10px; }
+.sum-chart { position: relative; background: var(--panel); border-radius: 8px; padding: 10px; }
+#sumChart { display: block; width: 100%; height: clamp(240px, 38vh, 380px); }
+.sum-tip { position: absolute; pointer-events: none; background: var(--bg); border: 1px solid var(--track); border-radius: 6px;
+  padding: 6px 9px; font-size: 13px; line-height: 1.35; white-space: nowrap; }
+.sum-tip b { font-family: var(--mono); font-weight: 500; }
+.sum-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+.sum-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.peaks { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.peak { background: var(--panel); border-radius: 8px; padding: 10px 12px; display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; align-items: baseline; }
+.peak b { font-family: var(--display); font-weight: 800; font-size: 34px; line-height: 1; grid-row: span 2; font-variant-numeric: tabular-nums; }
+.peak span { font-size: 15px; } .peak em { font-style: normal; font-size: 13px; color: var(--muted); font-family: var(--mono); }
+.sum-table { overflow-x: auto; background: var(--panel); border-radius: 8px; }
+.sum-table table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.sum-table th, .sum-table td { padding: 9px 12px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--track); }
+.sum-table th { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+.sum-table td.n, .sum-table th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.sum-table tr:last-child td { border-bottom: 0; }
+.ph { display: inline-flex; align-items: center; gap: 8px; } .ph::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
+@media (max-width: 520px) { .kpi.hero { grid-column: 1 / -1; } }
+.sum-note { color: var(--muted); font-size: 13px; margin: 6px 0 0; max-width: 75ch; }
+.profile { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.dlg select { font: 16px var(--body); color: var(--fg); background: var(--bg); border: 1px solid var(--track); border-radius: 6px; padding: .55em .6em; }
 </style>
 </head>
 <body>
@@ -212,6 +253,33 @@ button:focus-visible { outline: 3px solid var(--phase); outline-offset: 2px; }
   </div>
 </div>
 
+<div class="summary" id="summary" hidden role="dialog" aria-modal="true" aria-labelledby="sumTitle">
+  <div class="sum-wrap">
+    <div class="sum-head">
+      <h2 id="sumTitle"><small id="sumDate"></small>Training klaar</h2>
+      <div class="sum-actions">
+        <a class="linkbtn" id="sumAnalyse" href="analyse.html">Volledige analyse</a>
+        <button type="button" id="sumClose" class="go">Sluiten</button>
+      </div>
+    </div>
+    <div class="kpis" id="sumKpis"></div>
+    <section class="sum-sec">
+      <h3>Hartslag per fase</h3>
+      <div class="sum-legend" id="sumLegend"></div>
+      <div class="sum-chart"><svg id="sumChart" role="img" aria-label="Hartslag over de training met de hoofdfases en pieken"></svg><div class="sum-tip" id="sumTip" hidden></div></div>
+    </section>
+    <section class="sum-sec" id="sumPeaksSec">
+      <h3>Pieken</h3>
+      <div class="peaks" id="sumPeaks"></div>
+    </section>
+    <section class="sum-sec">
+      <h3>Per fase</h3>
+      <div class="sum-table"><table id="sumPhases"></table></div>
+      <p class="sum-note" id="sumNote"></p>
+    </section>
+  </div>
+</div>
+
 <dialog class="dlg" id="dlg" aria-labelledby="dlgTitle">
   <div class="dlg-head"><h2 id="dlgTitle">Trainingsdata</h2><button type="button" id="dlgClose" aria-label="Sluiten">Sluiten</button></div>
   <p class="dlg-status" id="dlgStatus"></p>
@@ -232,6 +300,16 @@ button:focus-visible { outline: 3px solid var(--phase); outline-offset: 2px; }
     <h3>Laatste trainingen</h3>
     <p class="dlg-status"><a href="analyse.html" style="color: var(--work)">Open de analyse per oefening</a></p>
     <ol class="hist" id="hist"></ol>
+  </section>
+
+  <section>
+    <h3>Profiel voor verbranding</h3>
+    <div class="profile">
+      <label for="pWeight">Gewicht (kg) <input id="pWeight" type="number" min="35" max="200" step="0.5" placeholder="bijv. 80"></label>
+      <label for="pAge">Leeftijd <input id="pAge" type="number" min="12" max="99" value="42"></label>
+      <label for="pSex">Formule <select id="pSex"><option value="m">Man</option><option value="v">Vrouw</option></select></label>
+    </div>
+    <p class="dlg-status">Nodig voor de geschatte verbranding na je training. Alleen bewaard in deze browser.</p>
   </section>
 
   <details class="cfg" id="cfgBox">
@@ -406,6 +484,7 @@ $("full").onclick = async () => {
   try { document.fullscreenElement ? await document.exitFullscreen() : await document.documentElement.requestFullscreen(); } catch (e) {}
 };
 document.addEventListener("keydown", e => {
+  if (!$("summary").hidden) { if (e.key === "Escape") $("summary").hidden = true; return; }
   if (e.target.closest && e.target.closest("input, textarea, select, dialog")) return;
   if (e.code === "Space") { e.preventDefault(); toggle(); }
   else if (e.key === "ArrowRight") $("skip").click();
@@ -558,7 +637,7 @@ function stepResponse(hr, t) {
   let pk = 0; hr.forEach((b, k) => { if (b > hr[pk]) pk = k; });
   return { start_hr: start, end_hr: end, min_hr: Math.min(...hr), peak_at_sec: t[pk], hr_rise: hr[pk] - start, hr_drop: start - end };
 }
-function finishSession(completed) {
+function finishSession(completed, showIt = completed) {
   if (!session) return;
   closeStep();
   const all = session.samples.map(x => x[1]);
@@ -584,9 +663,167 @@ function finishSession(completed) {
   };
   session = null;
   if (!rec.steps.length) return;
+  const sum = buildSummary(rec);
+  rec.session.kcal = sum.kcal; rec.session.kcal_method = sum.kcalMethod;
   writeQ([...readQ(), rec]);
+  if (showIt) showSummary(rec, sum);
   flushQueue();
 }
+// ---- Profiel en verbranding ----
+const PROF = { weight: null, age: 42, sex: "m" };
+try { Object.assign(PROF, JSON.parse(localStorage.getItem("tp_profile")) || {}); } catch (e) {}
+$("pWeight").value = PROF.weight || ""; $("pAge").value = PROF.age; $("pSex").value = PROF.sex;
+["pWeight", "pAge", "pSex"].forEach(id => $(id).addEventListener("change", () => {
+  PROF.weight = parseFloat($("pWeight").value) || null; PROF.age = parseInt($("pAge").value, 10) || 42; PROF.sex = $("pSex").value;
+  try { localStorage.setItem("tp_profile", JSON.stringify(PROF)); } catch (e) {}
+}));
+
+// Keytel e.a. (2005): energieverbruik uit hartslag, gewicht, leeftijd en geslacht (kJ/min, omgerekend naar kcal)
+function kcalPerMin(hr, w, age, sex) {
+  const kj = sex === "v" ? (-20.4022 + 0.4472 * hr - 0.1263 * w + 0.074 * age) : (-55.0969 + 0.6309 * hr + 0.1988 * w + 0.2017 * age);
+  return Math.max(kj / 4.184, 1.2);   // nooit lager dan ongeveer rustverbruik
+}
+// Zonder hartslag: schatting op basis van MET-waarden per soort oefening
+const MET = { box: 7.8, work: 5.0, rest: 1.8 };
+
+const PHASE_COLOR = { "Opwarmen": "var(--z3)", "Gewichten": "var(--work)", "Boksen": "var(--box)", "Cooling-down": "var(--rest)" };
+const phaseOf = block => (block || "").split(" ·")[0] || "Overig";
+
+function buildSummary(rec) {
+  const st = rec.steps, smp = rec.session.hr_samples || [];
+  const w = PROF.weight || 80, hasW = !!PROF.weight;
+  // fases: aaneengesloten stukken met dezelfde hoofdfase
+  const phases = [];
+  st.forEach(t => {
+    const name = phaseOf(t.block), from = t.offset_sec || 0, to = from + (t.actual_sec || 0);
+    const last = phases[phases.length - 1];
+    if (last && last.name === name) { last.to = Math.max(last.to, to); last.active += t.actual_sec || 0; last.steps.push(t); }
+    else phases.push({ name, from, to, active: t.actual_sec || 0, steps: [t] });
+  });
+  const phaseAt = sec => phases.find(p => sec >= p.from && sec < p.to) || phases[phases.length - 1];
+  const stepAt = sec => st.find(t => sec >= (t.offset_sec || 0) && sec < (t.offset_sec || 0) + (t.actual_sec || 0));
+
+  // verbranding: integreer over de metingen (gaten groter dan 10 sec niet meetellen)
+  let kcal = 0, method = "met";
+  phases.forEach(p => { p.kcal = 0; p.hr = []; });
+  if (smp.length > 30) {
+    method = "hartslag";
+    for (let k = 1; k < smp.length; k++) {
+      const dt = smp[k][0] - smp[k - 1][0]; if (dt <= 0 || dt > 10) continue;
+      const v = kcalPerMin(smp[k][1], w, PROF.age, PROF.sex) * dt / 60;
+      kcal += v; const p = phaseAt(smp[k][0]); if (p) p.kcal += v;
+    }
+    smp.forEach(([t, b]) => { const p = phaseAt(t); if (p) p.hr.push(b); });
+  } else {
+    st.forEach(t => { const v = MET[t.type] * 3.5 * w / 200 * (t.actual_sec || 0) / 60; kcal += v; const p = phases.find(p => p.steps.includes(t)); if (p) p.kcal += v; });
+  }
+  phases.forEach(p => { p.avg = avg(p.hr); p.max = p.hr.length ? Math.max(...p.hr) : null; });
+
+  // pieken: lokale maxima van een afgevlakte reeks, minstens 90 sec uit elkaar
+  const peaks = [];
+  if (smp.length > 30) {
+    const sm = smp.map((p, k) => { const a = smp.slice(Math.max(0, k - 2), k + 3).map(x => x[1]); return [p[0], a.reduce((x, y) => x + y, 0) / a.length, p[1]]; });
+    const cand = sm.filter((p, k) => k > 0 && k < sm.length - 1 && p[1] >= sm[k - 1][1] && p[1] >= sm[k + 1][1]).sort((a, b) => b[1] - a[1]);
+    for (const c of cand) {
+      if (peaks.length >= 3) break;
+      if (peaks.some(p => Math.abs(p.t - c[0]) < 90)) continue;
+      // echte hoogste waarde rond dit punt
+      const around = smp.filter(p => Math.abs(p[0] - c[0]) <= 3); const best = around.reduce((a, b) => b[1] > a[1] ? b : a, around[0]);
+      const sp = stepAt(best[0]);
+      peaks.push({ t: best[0], bpm: best[1], step: sp ? sp.name : "", type: sp ? sp.type : "work" });
+    }
+    peaks.sort((a, b) => a.t - b.t);
+  }
+  const zoneTime = [0, 0, 0, 0, 0];
+  for (let k = 1; k < smp.length; k++) { const dt = smp[k][0] - smp[k - 1][0]; if (dt > 0 && dt <= 10) zoneTime[zoneOf(smp[k][1]).n - 1] += dt; }
+  return { phases, peaks, kcal: Math.round(kcal), kcalMethod: method, hasWeight: hasW, zoneTime };
+}
+
+function showSummary(rec, sum) {
+  const s = rec.session, smp = s.hr_samples || [];
+  const df = new Intl.DateTimeFormat("nl-NL", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+  $("sumDate").textContent = df.format(new Date(s.started_at));
+  const hard = sum.zoneTime[3] + sum.zoneTime[4];
+  $("sumKpis").innerHTML = [
+    ["hero", `${sum.kcal}<small>kcal</small>`, "Geschatte verbranding", sum.kcalMethod === "hartslag" ? (sum.hasWeight ? "op basis van je hartslag" : "met 80 kg, stel je gewicht in") : "zonder hartslag, ruwe schatting"],
+    ["", fmt(s.duration_sec * 1000), "Actieve tijd", `${new Set(rec.steps.filter(t => t.type !== "rest").map(t => t.name)).size} oefeningen`],
+    ["", s.avg_hr ? `${s.avg_hr}<small>bpm</small>` : "–", "Gem. hartslag", s.avg_hr ? `${Math.round(s.avg_hr / maxHR * 100)}% van max` : "geen hartslag gemeten"],
+    ["", s.max_hr ? `${s.max_hr}<small>bpm</small>` : "–", "Max hartslag", s.max_hr ? `${Math.round(s.max_hr / maxHR * 100)}% van max` : ""],
+    ["", smp.length ? fmt(hard * 1000) : "–", "Zone 4 en 5", smp.length ? "boven 80% van max" : ""]
+  ].map(([c, v, l, e]) => `<div class="kpi ${c}"><b>${v}</b><span>${l}</span><em>${e}</em></div>`).join("");
+
+  $("sumLegend").innerHTML = sum.phases.filter((p, k, a) => a.findIndex(q => q.name === p.name) === k)
+    .map(p => `<span><i style="background:${PHASE_COLOR[p.name] || "var(--muted)"}"></i>${p.name}</span>`).join("") + `<span style="color:var(--fg)">— hartslag</span><span style="color:var(--fg)">● piek</span>`;
+  $("sumPeaksSec").hidden = !sum.peaks.length;
+  $("sumPeaks").innerHTML = sum.peaks.map(p => `<div class="peak"><b>${p.bpm}</b><span>${p.step}</span><em>na ${fmt(p.t * 1000)} · ${Math.round(p.bpm / maxHR * 100)}% van max</em></div>`).join("");
+  $("sumPhases").innerHTML = `<thead><tr><th>Fase</th><th class="n">Duur</th><th class="n">Gem. hartslag</th><th class="n">Max</th><th class="n">kcal</th></tr></thead><tbody>` +
+    sum.phases.map(p => `<tr><td><span class="ph" style="--c:${PHASE_COLOR[p.name] || "var(--muted)"}">${p.name}</span></td><td class="n">${fmt(p.active * 1000)}</td><td class="n">${p.avg ?? "–"}</td><td class="n">${p.max ?? "–"}</td><td class="n">${Math.round(p.kcal)}</td></tr>`).join("") + "</tbody>";
+  $("sumNote").textContent = sum.kcalMethod === "hartslag"
+    ? "Verbranding geschat met de formule van Keytel (2005) uit hartslag, gewicht, leeftijd en geslacht. Bij krachttraining en intervallen is zo'n schatting minder precies; zie het als richtwaarde."
+    : "Er is geen hartslag gemeten, dus de verbranding is ruw geschat op basis van het soort oefening en je gewicht.";
+  $("summary").hidden = false;
+  drawSummaryChart(rec, sum);
+}
+
+function drawSummaryChart(rec, sum) {
+  const svg = $("sumChart"), W = svg.clientWidth || 900, H = svg.clientHeight || 320;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const css = getComputedStyle(document.documentElement), c = v => css.getPropertyValue(v).trim();
+  const tok = v => v.startsWith("var(") ? c(v.slice(4, -1)) : v;
+  const smp = rec.session.hr_samples || [];
+  const end = Math.max(1, ...sum.phases.map(p => p.to), ...smp.map(p => p[0]));
+  const L = 40, R = 12, T = 30, B = 24, pw = W - L - R, ph = H - T - B;
+  const b = smp.map(p => p[1]);
+  let lo = Math.min(60, ...b), hi = Math.max(maxHR * .9, ...b);
+  lo = Math.floor((lo - 5) / 10) * 10; hi = Math.ceil((hi + 5) / 10) * 10;
+  const x = t => L + t / end * pw, y = v => T + ph - (v - lo) / (hi - lo) * ph;
+  let g = "";
+  // zonegrenzen
+  [.6, .7, .8, .9].forEach((f, k) => { const v = f * maxHR; if (v > lo && v < hi) {
+    g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="${c("--z" + (k + 2))}" stroke-opacity=".28" stroke-dasharray="3 4"/>`;
+    g += `<text x="${L - 6}" y="${y(v) + 4}" fill="${c("--muted")}" font-size="11" font-family="JetBrains Mono, monospace" text-anchor="end">${Math.round(v)}</text>`; } });
+  // fases als banden met naam
+  sum.phases.forEach(p => {
+    const x0 = x(p.from), x1 = x(p.to), w = Math.max(1, x1 - x0 - 2), col = tok(PHASE_COLOR[p.name] || "var(--muted)");
+    g += `<rect x="${x0 + 1}" y="${T}" width="${w}" height="${ph}" rx="4" fill="${col}" fill-opacity=".12"/>`;
+    g += `<rect x="${x0 + 1}" y="${T - 10}" width="${w}" height="5" rx="2" fill="${col}"/>`;
+    if (w > 60) g += `<text x="${x0 + 6}" y="${T + 16}" fill="${c("--fg")}" fill-opacity=".8" font-size="12" font-weight="600" font-family="Barlow, sans-serif" letter-spacing=".06em">${p.name.toUpperCase()}</text>`;
+  });
+  // tijdas
+  const step = end > 2400 ? 600 : end > 900 ? 300 : end > 240 ? 60 : 30;
+  for (let t = 0; t <= end; t += step) g += `<text x="${x(t)}" y="${H - 6}" fill="${c("--muted")}" font-size="11" font-family="JetBrains Mono, monospace" text-anchor="middle">${fmt(t * 1000)}</text>`;
+  if (smp.length > 1) {
+    const d = smp.map((p, k) => `${k && p[0] - smp[k - 1][0] <= 10 ? "L" : "M"}${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`).join("");
+    g += `<path d="${d}" fill="none" stroke="${c("--fg")}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    let lastLabel = -1e9;
+    sum.peaks.forEach(p => {
+      const px = x(p.t), py = y(p.bpm), right = px < W - 90;
+      g += `<circle cx="${px}" cy="${py}" r="5" fill="${c("--fg")}" stroke="${c("--panel")}" stroke-width="2"/>`;
+      if (px - lastLabel < 44) return;   // labels niet over elkaar; de waarden staan ook onder de grafiek
+      lastLabel = px;
+      g += `<text x="${px + (right ? 9 : -9)}" y="${py - 7}" fill="${c("--fg")}" font-size="13" font-weight="500" font-family="JetBrains Mono, monospace" text-anchor="${right ? "start" : "end"}">${p.bpm}</text>`;
+    });
+  } else {
+    g += `<text x="${L + pw / 2}" y="${T + ph / 2}" fill="${c("--muted")}" font-size="15" text-anchor="middle" font-family="Barlow, sans-serif">Geen hartslag gemeten. Verbind je Fitbit Air voor de grafiek.</text>`;
+  }
+  g += `<line id="sumCross" x1="0" x2="0" y1="${T}" y2="${T + ph}" stroke="${c("--muted")}" visibility="hidden"/><rect id="sumHit" x="${L}" y="${T - 10}" width="${pw}" height="${ph + 10}" fill="transparent"/>`;
+  svg.innerHTML = g;
+  const hit = svg.querySelector("#sumHit"), cross = svg.querySelector("#sumCross"), tip = $("sumTip");
+  hit.addEventListener("pointermove", ev => {
+    const r = svg.getBoundingClientRect(), sec = Math.max(0, Math.min(end, ((ev.clientX - r.left) * (W / r.width) - L) / pw * end));
+    let near = null; for (const p of smp) if (!near || Math.abs(p[0] - sec) < Math.abs(near[0] - sec)) near = p;
+    const stp = rec.steps.find(t => sec >= (t.offset_sec || 0) && sec < (t.offset_sec || 0) + (t.actual_sec || 0));
+    cross.setAttribute("x1", x(sec)); cross.setAttribute("x2", x(sec)); cross.setAttribute("visibility", "visible");
+    tip.innerHTML = `<b>${fmt(sec * 1000)}</b>${near ? ` · <b>${near[1]}</b> bpm` : ""}<br>${stp ? stp.name : ""}`;
+    const left = x(sec) / W * r.width; tip.style.left = Math.min(left + 14, r.width - 170) + "px"; tip.style.top = "14px"; tip.hidden = false;
+  });
+  hit.addEventListener("pointerleave", () => { cross.setAttribute("visibility", "hidden"); tip.hidden = true; });
+}
+let lastSummary = null;
+$("sumClose").onclick = () => { $("summary").hidden = true; };
+window.addEventListener("resize", () => { if (!$("summary").hidden && lastSummary) drawSummaryChart(...lastSummary); });
+const _show = showSummary; showSummary = (rec, sum) => { lastSummary = [rec, sum]; _show(rec, sum); };
+
 // Pagina sluiten tijdens een training: bewaar wat er is, zodat het later alsnog wordt geupload
 window.addEventListener("pagehide", () => { if (session) finishSession(false); });
 

@@ -143,7 +143,7 @@ async function init() {
   if (!data.session) { msg("Je bent niet ingelogd. Log in via de timer, bij Trainingsdata, en open deze pagina daarna opnieuw."); return; }
 
   const [a, b] = await Promise.all([
-    sb.from("training_sessions").select("id,started_at,duration_sec,completed,avg_hr,max_hr,max_hr_setting,hr_samples").order("started_at", { ascending: false }).limit(50),
+    sb.from("training_sessions").select("id,started_at,duration_sec,completed,avg_hr,max_hr,max_hr_setting,hr_samples,kcal,kcal_method").order("started_at", { ascending: false }).limit(50),
     sb.from("training_steps").select("*").order("seq").limit(5000)
   ]);
   if (a.error || b.error) { msg("Ophalen lukte niet: " + (a.error || b.error).message); return; }
@@ -162,7 +162,7 @@ function renderSession(id) {
   const s = sessions.find(x => x.id === id), st = stepsOf(id);
   const work = st.filter(t => t.type !== "rest");
   $("stats").innerHTML = [
-    [fmt(s.duration_sec), "Actieve tijd"], [work.length, "Oefeningen"],
+    [fmt(s.duration_sec), "Actieve tijd"], [s.kcal != null ? s.kcal : "–", "kcal (geschat)"], [new Set(work.map(t => t.name)).size, "Oefeningen"],
     [num(s.avg_hr), "Gem. hartslag"], [num(s.max_hr), "Max hartslag"]
   ].map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join("");
   show("secSession", true);

@@ -9,6 +9,7 @@ Fullscreen timer voor een training met bokszak, barbell en losse gewichten (45 m
 - Opbouw van 45 minuten: opwarmen, gewichten, boksen, cooling-down (handschoenen gaan één keer aan en uit)
 - Knoppen voor vorige oefening, start/pauze en volgende oefening
 - Piepjes in de laatste 3 seconden en bij elke wissel
+- Overzicht na de training: geschatte verbranding, hartslag per fase met pieken, tabel per fase
 - Live hartslag van een Fitbit Air (of andere Bluetooth-hartslagmeter) met zones en grafiek van de laatste 5 minuten
 - Toetsen: spatie = start/pauze, pijltjes = vorige/volgende
 
